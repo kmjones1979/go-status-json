@@ -1,3 +1,3 @@
 # status-json-go
-### command line tool for parsing the nginx plus status api
+### command line tool for parsing the NGINX Plus status api
 Under construction
