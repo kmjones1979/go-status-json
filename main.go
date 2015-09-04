@@ -4,10 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/cactus/go-statsd-client/statsd"
+	"gopkg.in/jmervine/readable.v1"
 	"io"
 	"log"
 	"net/http"
-	"sync"
 	"time"
 )
 
@@ -68,9 +68,6 @@ type StatusJSON struct {
 
 func main() {
 
-	wg := new(sync.WaitGroup)
-	wg.Add(1)
-
 	for {
 
 		client, err := statsd.NewClient("127.0.0.1:8125", "nginx")
@@ -97,7 +94,6 @@ func main() {
 		if err != nil {
 			log.Fatalf("ERROR: %s", err)
 		}
-		defer y.Body.Close()
 
 		y_dec := json.NewDecoder(y.Body)
 
@@ -136,9 +132,7 @@ func main() {
 		// make sure to clean up
 		client.Close()
 		x.Body.Close()
+		readable.Log("type", "close", "fn", "log")
 	}
 
-	wg.Done()
-
-	wg.Wait()
 }
