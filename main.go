@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"sync"
 	"time"
 )
 
@@ -67,24 +68,24 @@ type StatusJSON struct {
 
 func main() {
 
-	for {
-		var status_json string = "http://demo.nginx.com/status"
+	wg := new(sync.WaitGroup)
+	wg.Add(1)
 
-		// first create a client
+	for {
+
 		client, err := statsd.NewClient("127.0.0.1:8125", "nginx")
 		// handle any errors
 		if err != nil {
 			log.Fatal(err)
 		}
-		// make sure to clean up
-		defer client.Close()
+
+		var status_json string = "http://demo.nginx.com/status"
 
 		// request status json from NGINX Plus
 		x, err := http.Get(status_json)
 		if err != nil {
 			log.Fatalf("ERROR: %s", err)
 		}
-		defer x.Body.Close()
 
 		x_dec := json.NewDecoder(x.Body)
 
@@ -131,5 +132,13 @@ func main() {
 		ngx_cai := (y_data.Connections.Idle)
 		fmt.Println("status.demo.connections.idle", ngx_cai)
 		client.Inc("status.demo.connections.idle", ngx_cai, 5.0)
+
+		// make sure to clean up
+		client.Close()
+		x.Body.Close()
 	}
+
+	wg.Done()
+
+	wg.Wait()
 }
