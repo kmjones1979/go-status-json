@@ -68,8 +68,9 @@ type StatusJSON struct {
 func main() {
 
 	var status_json string = "http://demo.nginx.com/status"
+	//var graphite_host string = "127.0.0.1:2003"
 
-	// load status json
+	// request status json
 	x, err := http.Get(status_json)
 	if err != nil {
 		log.Fatalf("ERROR: %s", err)
@@ -78,23 +79,10 @@ func main() {
 
 	x_dec := json.NewDecoder(x.Body)
 
-	//	for {
-	//		var x_data StatusJSON
-	//		if err := x_dec.Decode(&x_data); err == io.EOF {
-	//			break
-	//		} else if err != nil {
-	//			log.Fatal(err)
-	//		}
-	//
-	//		//fmt.Println(x_data.Connections.Accepted)
-	//		x_ca := x_data.Connections.Accepted
-	//
-	//	}
-
-	// sleep 1 second
+	// sleep x seconds
 	time.Sleep(time.Millisecond * 5000)
 
-	// load status json into second variable
+	// re-request json
 	y, err := http.Get(status_json)
 	if err != nil {
 		log.Fatalf("ERROR: %s", err)
@@ -103,19 +91,7 @@ func main() {
 
 	y_dec := json.NewDecoder(y.Body)
 
-	//	for {
-	//		var y_data StatusJSON
-	//		if err := y_dec.Decode(&y_data); err == io.EOF {
-	//			break
-	//		} else if err != nil {
-	//			log.Fatal(err)
-	//		}
-	//
-	//		//fmt.Println(y_data.Connections.Accepted)
-	//		y_ca := y_data.Connections.Accepted
-	//
-	//	}
-
+	// loop through both to get diff
 	for {
 
 		var x_data StatusJSON
@@ -125,9 +101,6 @@ func main() {
 			log.Fatal(err)
 		}
 
-		//fmt.Println(x_data.Connections.Accepted)
-		x_ca := x_data.Connections.Accepted
-
 		var y_data StatusJSON
 		if err := y_dec.Decode(&y_data); err == io.EOF {
 			break
@@ -135,11 +108,22 @@ func main() {
 			log.Fatal(err)
 		}
 
-		//fmt.Println(y_data.Connections.Accepted)
-		y_ca := y_data.Connections.Accepted
+		//conn, err := net.Dial("tcp", graphite_host)
+		//if err != nil {
+		//	// handle error
+		//}
 
-		z := (y_ca - x_ca)
-		fmt.Println(z)
+		ngx_ca := (y_data.Connections.Accepted - x_data.Connections.Accepted)
+		fmt.Println(ngx_ca)
+
+		ngx_cd := (y_data.Connections.Dropped - x_data.Connections.Dropped)
+		fmt.Println(ngx_cd)
+
+		ngx_can := (y_data.Connections.Active - x_data.Connections.Active)
+		fmt.Println(ngx_can)
+
+		ngx_cai := (y_data.Connections.Idle - x_data.Connections.Idle)
+		fmt.Println("nginx.stats.avgConnections.Idle %f %s", ngx_cai)
 
 	}
 }
