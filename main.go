@@ -3,10 +3,10 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/cactus/go-statsd-client/statsd"
 	"io"
 	"log"
 	"net/http"
-	//"sync"
 	"time"
 )
 
@@ -14,10 +14,10 @@ type StatusJSON struct {
 	//Address     string   `json:"address"`
 	Caches      struct{} `json:"caches"`
 	Connections struct {
-		Accepted int `json:"accepted"`
-		Active   int `json:"active"`
-		Dropped  int `json:"dropped"`
-		Idle     int `json:"idle"`
+		Accepted int64 `json:"accepted"`
+		Active   int64 `json:"active"`
+		Dropped  int64 `json:"dropped"`
+		Idle     int64 `json:"idle"`
 	} `json:"connections"`
 	//Generation    int    `json:"generation"`
 	//LoadTimestamp int    `json:"load_timestamp"`
@@ -67,32 +67,40 @@ type StatusJSON struct {
 
 func main() {
 
-	var status_json string = "http://demo.nginx.com/status"
-	//var graphite_host string = "127.0.0.1:2003"
-
-	// request status json
-	x, err := http.Get(status_json)
-	if err != nil {
-		log.Fatalf("ERROR: %s", err)
-	}
-	defer x.Body.Close()
-
-	x_dec := json.NewDecoder(x.Body)
-
-	// sleep x seconds
-	time.Sleep(time.Millisecond * 5000)
-
-	// re-request json
-	y, err := http.Get(status_json)
-	if err != nil {
-		log.Fatalf("ERROR: %s", err)
-	}
-	defer y.Body.Close()
-
-	y_dec := json.NewDecoder(y.Body)
-
-	// loop through both to get diff
 	for {
+		var status_json string = "http://demo.nginx.com/status"
+
+		// first create a client
+		client, err := statsd.NewClient("127.0.0.1:8125", "nginx")
+		// handle any errors
+		if err != nil {
+			log.Fatal(err)
+		}
+		// make sure to clean up
+		defer client.Close()
+
+		// request status json from NGINX Plus
+		x, err := http.Get(status_json)
+		if err != nil {
+			log.Fatalf("ERROR: %s", err)
+		}
+		defer x.Body.Close()
+
+		x_dec := json.NewDecoder(x.Body)
+
+		// sleep x seconds
+		time.Sleep(time.Millisecond * 5000)
+
+		// re-request json from NGINX Plus
+		y, err := http.Get(status_json)
+		if err != nil {
+			log.Fatalf("ERROR: %s", err)
+		}
+		defer y.Body.Close()
+
+		y_dec := json.NewDecoder(y.Body)
+
+		// loop through both to get diff
 
 		var x_data StatusJSON
 		if err := x_dec.Decode(&x_data); err == io.EOF {
@@ -108,22 +116,20 @@ func main() {
 			log.Fatal(err)
 		}
 
-		//conn, err := net.Dial("tcp", graphite_host)
-		//if err != nil {
-		//	// handle error
-		//}
-
 		ngx_ca := (y_data.Connections.Accepted - x_data.Connections.Accepted)
-		fmt.Println(ngx_ca)
+		fmt.Println("status.demo.connections.accepted", ngx_ca)
+		client.Inc("status.demo.connections.accepted", ngx_ca, 5.0)
 
 		ngx_cd := (y_data.Connections.Dropped - x_data.Connections.Dropped)
-		fmt.Println(ngx_cd)
+		fmt.Println("status.demo.connections.dropped", ngx_cd)
+		client.Inc("status.demo.connections.dropped", ngx_cd, 5.0)
 
-		ngx_can := (y_data.Connections.Active - x_data.Connections.Active)
-		fmt.Println(ngx_can)
+		ngx_can := (y_data.Connections.Active)
+		fmt.Println("status.demo.connections.active", ngx_can)
+		client.Inc("status.demo.connections.active", ngx_can, 5.0)
 
-		ngx_cai := (y_data.Connections.Idle - x_data.Connections.Idle)
-		fmt.Println("nginx.stats.avgConnections.Idle %f %s", ngx_cai)
-
+		ngx_cai := (y_data.Connections.Idle)
+		fmt.Println("status.demo.connections.idle", ngx_cai)
+		client.Inc("status.demo.connections.idle", ngx_cai, 5.0)
 	}
 }
