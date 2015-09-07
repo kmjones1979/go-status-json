@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/cactus/go-statsd-client/statsd"
-	"gopkg.in/jmervine/readable.v1"
+	//"gopkg.in/jmervine/readable.v1"
 	"io"
 	"log"
 	"net/http"
@@ -76,6 +76,8 @@ func main() {
 			log.Fatal(err)
 		}
 
+		defer client.Close()
+
 		var status_json string = "http://demo.nginx.com/status"
 
 		// request status json from NGINX Plus
@@ -85,6 +87,8 @@ func main() {
 		}
 
 		x_dec := json.NewDecoder(x.Body)
+
+		defer x.Body.Close()
 
 		// sleep x seconds
 		time.Sleep(time.Millisecond * 5000)
@@ -129,10 +133,8 @@ func main() {
 		fmt.Println("status.demo.connections.idle", ngx_cai)
 		client.Inc("status.demo.connections.idle", ngx_cai, 5.0)
 
-		// make sure to clean up
-		client.Close()
-		x.Body.Close()
-		readable.Log("type", "close", "fn", "log")
+		// log testing
+		//readable.Log("type", "close", "fn", "log")
 	}
 
 }
