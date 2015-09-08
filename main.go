@@ -76,8 +76,6 @@ func main() {
 			log.Fatal(err)
 		}
 
-		defer client.Close()
-
 		var status_json string = "http://demo.nginx.com/status"
 
 		// request status json from NGINX Plus
@@ -87,8 +85,6 @@ func main() {
 		}
 
 		x_dec := json.NewDecoder(x.Body)
-
-		defer x.Body.Close()
 
 		// sleep x seconds
 		time.Sleep(time.Millisecond * 5000)
@@ -132,6 +128,12 @@ func main() {
 		ngx_cai := (y_data.Connections.Idle)
 		fmt.Println("status.demo.connections.idle", ngx_cai)
 		client.Inc("status.demo.connections.idle", ngx_cai, 5.0)
+
+		// close any open connections before loop restarts
+
+		client.Close()
+		x.Body.Close()
+		y.Body.Close()
 
 		// log testing
 		//readable.Log("type", "close", "fn", "log")
